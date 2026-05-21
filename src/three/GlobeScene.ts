@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { PROJECTS } from "../data/projects";
 import { sampleLandPoints } from "./landPoints";
+import { CityScene } from "./CityScene";
 
 function latLonToVec3(lat: number, lon: number, radius: number): THREE.Vector3 {
   const phi = (90 - lat) * (Math.PI / 180);
@@ -34,6 +35,8 @@ export class GlobeScene {
   private flying = false;
   private selectedId: string | null = null;
   private onSelectCb: ((id: string | null) => void) | null = null;
+  private city: CityScene | null = null;
+  private cityFade = 0; // 0..1
   private onPointerMove: (e: PointerEvent) => void;
   private onClick: (e: PointerEvent) => void;
 
@@ -255,7 +258,7 @@ export class GlobeScene {
       }
     });
     if (this.flying) {
-      this.flyT = Math.min(1, this.flyT + 0.022);
+      this.flyT = Math.min(1, this.flyT + 0.014);
       const e = this.flyT < 0.5
         ? 4 * this.flyT * this.flyT * this.flyT
         : 1 - Math.pow(-2 * this.flyT + 2, 3) / 2; // easeInOutCubic
@@ -265,6 +268,19 @@ export class GlobeScene {
         this.flying = false;
         // re-enable controls only when back at orbit (selectedId null)
         this.controls.enabled = this.selectedId === null;
+      }
+    }
+    // city fade: in when a project is selected, out when not
+    if (this.city) {
+      const targetFade = this.selectedId !== null ? 1 : 0;
+      this.cityFade += (targetFade - this.cityFade) * 0.06;
+      this.city.setOpacity(this.cityFade);
+      // grow from tiny to full as it fades in (subtle scale-up)
+      const s = 0.0001 + this.cityFade * 1.0;
+      this.city.group.scale.setScalar(s);
+      // once fully faded out on return, dispose it
+      if (this.selectedId === null && this.cityFade < 0.02) {
+        this.group_removeCity();
       }
     }
     this.controls.update();
@@ -292,6 +308,20 @@ export class GlobeScene {
     this.globe.localToWorld(worldPos);
     const dir = worldPos.clone().normalize();
     const camPos = worldPos.clone().add(dir.multiplyScalar(55)); // 55 units above the pin
+    // build the city at the pin, oriented tangent to the globe surface
+    if (this.city) { this.group_removeCity(); }
+    this.city = new CityScene(id);
+    const up = worldPos.clone().normalize();
+    this.city.group.position.copy(worldPos);
+    // orient the city's local +Y to point along the surface normal (up)
+    const quat = new THREE.Quaternion().setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      up
+    );
+    this.city.group.quaternion.copy(quat);
+    this.city.group.scale.setScalar(0.0001); // start tiny, grow on fade-in
+    this.scene.add(this.city.group);
+    this.cityFade = 0;
     this.startFly(camPos, worldPos);
     this.selectedId = id;
     if (this.onSelectCb) this.onSelectCb(id);
@@ -301,6 +331,14 @@ export class GlobeScene {
     this.startFly(this.homePos.clone(), this.homeTarget.clone());
     this.selectedId = null;
     if (this.onSelectCb) this.onSelectCb(null);
+  }
+
+  private group_removeCity() {
+    if (this.city) {
+      this.scene.remove(this.city.group);
+      this.city.dispose();
+      this.city = null;
+    }
   }
 
   zoomIn() {
@@ -321,6 +359,7 @@ export class GlobeScene {
   }
 
   dispose() {
+    this.group_removeCity();
     cancelAnimationFrame(this.frameId);
     window.removeEventListener("resize", this.onResize);
     this.renderer.domElement.removeEventListener("pointermove", this.onPointerMove);
