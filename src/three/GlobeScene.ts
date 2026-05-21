@@ -1,6 +1,28 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
+// coarse land test — recognizable continent silhouettes via overlapping blobs.
+// not geographically exact; stylized for the holographic look.
+function isLand(lat: number, lon: number): boolean {
+  const blobs: [number, number, number][] = [
+    [54, -110, 26], [44, -100, 24], [33, -95, 18], [18, -95, 12], // n america
+    [8, -75, 12], [-10, -60, 26], [-25, -60, 16], [-38, -65, 8],  // s america
+    [54, 28, 30], [44, 12, 16],                                   // europe
+    [22, 18, 26], [4, 22, 18], [-12, 26, 18], [-30, 24, 10],      // africa
+    [60, 90, 40], [38, 100, 30], [22, 78, 16], [62, 150, 16],     // asia
+    [-25, 133, 18], [-32, 147, 10],                               // australia
+  ];
+  for (const [bLat, bLon, rad] of blobs) {
+    const dLat = lat - bLat;
+    let dLon = lon - bLon;
+    if (dLon > 180) dLon -= 360;
+    if (dLon < -180) dLon += 360;
+    // squash longitude a bit so blobs look less circular
+    if (Math.sqrt(dLat * dLat + dLon * dLon * 0.55) < rad) return true;
+  }
+  return false;
+}
+
 export class GlobeScene {
   private renderer: THREE.WebGLRenderer;
   private scene: THREE.Scene;
@@ -61,6 +83,41 @@ export class GlobeScene {
       })
     );
     this.globe.add(wire);
+
+    // glowing landmass dots — fibonacci sphere masked by isLand
+    {
+      const N = 6000;
+      const pts: number[] = [];
+      for (let i = 0; i < N; i++) {
+        const y = 1 - (i / (N - 1)) * 2; // -1..1
+        const radius = Math.sqrt(1 - y * y);
+        const theta = Math.PI * (3 - Math.sqrt(5)) * i;
+        const lat = Math.asin(y) * (180 / Math.PI);
+        let lon = ((theta % (2 * Math.PI)) * (180 / Math.PI)) - 180;
+        if (!isLand(lat, lon)) continue;
+        const rr = R * 1.005;
+        pts.push(
+          rr * radius * Math.cos(theta),
+          rr * y,
+          rr * radius * Math.sin(theta)
+        );
+      }
+      const landGeo = new THREE.BufferGeometry();
+      landGeo.setAttribute(
+        "position",
+        new THREE.BufferAttribute(new Float32Array(pts), 3)
+      );
+      const land = new THREE.Points(
+        landGeo,
+        new THREE.PointsMaterial({
+          color: 0x16e08c,
+          size: 1.7,
+          transparent: true,
+          opacity: 0.9,
+        })
+      );
+      this.globe.add(land);
+    }
 
     // starfield
     const starCount = 1500;
