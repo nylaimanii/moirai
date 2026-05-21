@@ -1,1 +1,67 @@
 @import "tailwindcss";
+
+@theme {
+  /* moirai - neon holographic palette */
+
+  /* neon green - primary, "good"/economic life */
+  --color-neon-300: #5ee6a8;
+  --color-neon-400: #16e08c;
+  --color-neon-500: #0fb873;
+
+  /* cyan - secondary, structures/buildings, the "measure" */
+  --color-cyan-300: #5fd0e6;
+  --color-cyan-400: #1b9fc4;
+  --color-cyan-500: #1582a3;
+
+  /* violet - pollution / "this matters" */
+  --color-violet-300: #a78bff;
+  --color-violet-400: #7e5be8;
+  --color-violet-500: #6344c4;
+
+  /* rose - health strain / the "cut" */
+  --color-rose-300: #ff7d96;
+  --color-rose-400: #e03a5f;
+  --color-rose-500: #c02a4c;
+
+  /* amber/gold - economic value, glow */
+  --color-gold-300: #f4c66a;
+  --color-gold-400: #d98a2b;
+  --color-gold-500: #b8701f;
+
+  /* orange - traffic */
+  --color-traffic-400: #e8702a;
+
+  /* deep space neutrals */
+  --color-space-900: #04060d;
+  --color-space-800: #0a1628;
+  --color-space-700: #0e2030;
+  --color-space-600: #16304a;
+
+  /* light/ink */
+  --color-haze-100: #eaf6ff;
+  --color-haze-300: #9fb3c8;
+  --color-haze-500: #5a6472;
+
+  /* type */
+  --font-display: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Menlo", monospace;
+}
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    margin: 0;
+    background-color: var(--color-space-900);
+    color: var(--color-haze-100);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow: hidden; /* the globe owns the viewport */
+  }
+  ::selection {
+    background-color: var(--color-cyan-400);
+    color: var(--color-space-900);
+  }
+}
