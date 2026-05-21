@@ -1,5 +1,16 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { PROJECTS } from "../data/projects";
+
+function latLonToVec3(lat: number, lon: number, radius: number): THREE.Vector3 {
+  const phi = (90 - lat) * (Math.PI / 180);
+  const theta = (lon + 180) * (Math.PI / 180);
+  return new THREE.Vector3(
+    -radius * Math.sin(phi) * Math.cos(theta),
+    radius * Math.cos(phi),
+    radius * Math.sin(phi) * Math.sin(theta)
+  );
+}
 
 // coarse land test — recognizable continent silhouettes via overlapping blobs.
 // not geographically exact; stylized for the holographic look.
@@ -30,6 +41,7 @@ export class GlobeScene {
   private controls: OrbitControls;
   private globe: THREE.Group;
   private stars: THREE.Points;
+  private pins!: THREE.Group;
   private frameId = 0;
   private container: HTMLElement;
   private onResize: () => void;
@@ -157,6 +169,33 @@ export class GlobeScene {
       this.scene.add(atmo);
     }
 
+    // project pins — glowing markers at each project's lat/lon
+    this.pins = new THREE.Group();
+    this.globe.add(this.pins);
+    for (const p of PROJECTS) {
+      const pos = latLonToVec3(p.lat, p.lon, R * 1.01);
+      const pin = new THREE.Mesh(
+        new THREE.SphereGeometry(1.6, 12, 12),
+        new THREE.MeshBasicMaterial({ color: 0xf4c66a })
+      );
+      pin.position.copy(pos);
+      pin.userData.projectId = p.id;
+      // a soft halo ring around each pin
+      const halo = new THREE.Mesh(
+        new THREE.SphereGeometry(2.8, 12, 12),
+        new THREE.MeshBasicMaterial({
+          color: 0xf4c66a,
+          transparent: true,
+          opacity: 0.25,
+        })
+      );
+      halo.position.copy(pos);
+      halo.userData.isHalo = true;
+      pin.userData.halo = halo;
+      this.pins.add(pin);
+      this.pins.add(halo);
+    }
+
     // starfield
     const starCount = 1500;
     const positions = new Float32Array(starCount * 3);
@@ -200,6 +239,13 @@ export class GlobeScene {
     // idle auto-rotate
     this.globe.rotation.y += 0.0012;
     this.stars.rotation.y += 0.0002;
+    // pulse the pin halos
+    const pulse = 1 + Math.sin(performance.now() * 0.003) * 0.18;
+    this.pins.children.forEach((child) => {
+      if ((child as THREE.Mesh).userData.isHalo) {
+        child.scale.setScalar(pulse);
+      }
+    });
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }
