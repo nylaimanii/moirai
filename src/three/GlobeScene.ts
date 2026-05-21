@@ -125,13 +125,13 @@ export class GlobeScene {
           uniform float uIntensity;
           void main() {
             // fresnel: glow strongest where normal faces away from camera (the rim)
-            float fres = pow(0.72 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.6);
+            float fres = pow(0.72 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.4);
             gl_FragColor = vec4(uColor, clamp(fres, 0.0, 1.0) * uIntensity);
           }
         `,
       });
       const atmo = new THREE.Mesh(
-        new THREE.SphereGeometry(R * 1.18, 48, 48),
+        new THREE.SphereGeometry(R * 1.18, 96, 96),
         atmoMat
       );
       // atmosphere is added to the SCENE (not this.globe) so it doesn't
@@ -221,11 +221,19 @@ export class GlobeScene {
   }
 
   zoomIn() {
-    this.camera.position.multiplyScalar(0.85);
+    const target = this.controls.target;
+    const dist = this.camera.position.distanceTo(target);
+    const next = Math.max(this.controls.minDistance, dist * 0.82);
+    const dir = this.camera.position.clone().sub(target).normalize();
+    this.camera.position.copy(target).add(dir.multiplyScalar(next));
     this.controls.update();
   }
   zoomOut() {
-    this.camera.position.multiplyScalar(1.18);
+    const target = this.controls.target;
+    const dist = this.camera.position.distanceTo(target);
+    const next = Math.min(this.controls.maxDistance, dist * 1.22);
+    const dir = this.camera.position.clone().sub(target).normalize();
+    this.camera.position.copy(target).add(dir.multiplyScalar(next));
     this.controls.update();
   }
 
