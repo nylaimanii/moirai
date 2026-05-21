@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { PROJECTS } from "../data/projects";
+import { sampleLandPoints } from "./landPoints";
 
 function latLonToVec3(lat: number, lon: number, radius: number): THREE.Vector3 {
   const phi = (90 - lat) * (Math.PI / 180);
@@ -10,28 +11,6 @@ function latLonToVec3(lat: number, lon: number, radius: number): THREE.Vector3 {
     radius * Math.cos(phi),
     radius * Math.sin(phi) * Math.sin(theta)
   );
-}
-
-// coarse land test — recognizable continent silhouettes via overlapping blobs.
-// not geographically exact; stylized for the holographic look.
-function isLand(lat: number, lon: number): boolean {
-  const blobs: [number, number, number][] = [
-    [54, -110, 26], [44, -100, 24], [33, -95, 18], [18, -95, 12], // n america
-    [8, -75, 12], [-10, -60, 26], [-25, -60, 16], [-38, -65, 8],  // s america
-    [54, 28, 30], [44, 12, 16],                                   // europe
-    [22, 18, 26], [4, 22, 18], [-12, 26, 18], [-30, 24, 10],      // africa
-    [60, 90, 40], [38, 100, 30], [22, 78, 16], [62, 150, 16],     // asia
-    [-25, 133, 18], [-32, 147, 10],                               // australia
-  ];
-  for (const [bLat, bLon, rad] of blobs) {
-    const dLat = lat - bLat;
-    let dLon = lon - bLon;
-    if (dLon > 180) dLon -= 360;
-    if (dLon < -180) dLon += 360;
-    // squash longitude a bit so blobs look less circular
-    if (Math.sqrt(dLat * dLat + dLon * dLon * 0.55) < rad) return true;
-  }
-  return false;
 }
 
 export class GlobeScene {
@@ -80,7 +59,7 @@ export class GlobeScene {
     // inner dark sphere so the wireframe has a body
     const core = new THREE.Mesh(
       new THREE.SphereGeometry(R * 0.99, 48, 48),
-      new THREE.MeshBasicMaterial({ color: 0x0a1628 })
+      new THREE.MeshBasicMaterial({ color: 0x060d18 })
     );
     this.globe.add(core);
 
@@ -88,44 +67,35 @@ export class GlobeScene {
     const wire = new THREE.Mesh(
       new THREE.SphereGeometry(R, 36, 24),
       new THREE.MeshBasicMaterial({
-        color: 0x16e08c,
+        color: 0x1b9fc4,
         wireframe: true,
         transparent: true,
-        opacity: 0.35,
+        opacity: 0.08,
       })
     );
     this.globe.add(wire);
 
-    // glowing landmass dots — fibonacci sphere masked by isLand
+    // real landmass dots — sampled from actual coastline geojson
     {
-      const N = 6000;
-      const pts: number[] = [];
-      for (let i = 0; i < N; i++) {
-        const y = 1 - (i / (N - 1)) * 2; // -1..1
-        const radius = Math.sqrt(1 - y * y);
-        const theta = Math.PI * (3 - Math.sqrt(5)) * i;
-        const lat = Math.asin(y) * (180 / Math.PI);
-        let lon = ((theta % (2 * Math.PI)) * (180 / Math.PI)) - 180;
-        if (!isLand(lat, lon)) continue;
-        const rr = R * 1.005;
-        pts.push(
-          rr * radius * Math.cos(theta),
-          rr * y,
-          rr * radius * Math.sin(theta)
-        );
+      const landPts = sampleLandPoints(1.4);
+      const positions = new Float32Array(landPts.length * 3);
+      for (let i = 0; i < landPts.length; i++) {
+        const [lat, lon] = landPts[i];
+        const v = latLonToVec3(lat, lon, R * 1.004);
+        positions[i * 3] = v.x;
+        positions[i * 3 + 1] = v.y;
+        positions[i * 3 + 2] = v.z;
       }
       const landGeo = new THREE.BufferGeometry();
-      landGeo.setAttribute(
-        "position",
-        new THREE.BufferAttribute(new Float32Array(pts), 3)
-      );
+      landGeo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
       const land = new THREE.Points(
         landGeo,
         new THREE.PointsMaterial({
-          color: 0x16e08c,
-          size: 1.7,
+          color: 0x3ff0c0,
+          size: 1.15,
+          sizeAttenuation: true,
           transparent: true,
-          opacity: 0.9,
+          opacity: 0.95,
         })
       );
       this.globe.add(land);
@@ -139,8 +109,8 @@ export class GlobeScene {
         depthWrite: false,
         blending: THREE.AdditiveBlending,
         uniforms: {
-          uColor: { value: new THREE.Color(0x1b9fc4) },
-          uIntensity: { value: 1.15 },
+          uColor: { value: new THREE.Color(0x2fd0d8) },
+          uIntensity: { value: 0.85 },
         },
         vertexShader: `
           varying vec3 vNormal;
@@ -213,9 +183,9 @@ export class GlobeScene {
       starGeo,
       new THREE.PointsMaterial({
         color: 0x5fd0e6,
-        size: 1.4,
+        size: 0.9,
         transparent: true,
-        opacity: 0.7,
+        opacity: 0.5,
       })
     );
     this.scene.add(this.stars);
@@ -248,6 +218,15 @@ export class GlobeScene {
     });
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
+  }
+
+  zoomIn() {
+    this.camera.position.multiplyScalar(0.85);
+    this.controls.update();
+  }
+  zoomOut() {
+    this.camera.position.multiplyScalar(1.18);
+    this.controls.update();
   }
 
   dispose() {
