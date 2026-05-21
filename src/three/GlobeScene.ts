@@ -24,6 +24,18 @@ export class GlobeScene {
   private frameId = 0;
   private container: HTMLElement;
   private onResize: () => void;
+  private raycaster = new THREE.Raycaster();
+  private pointer = new THREE.Vector2();
+  private homePos = new THREE.Vector3(0, 0, 320);
+  private homeTarget = new THREE.Vector3(0, 0, 0);
+  private flyT = 1;           // 0..1 tween progress; 1 = settled
+  private flyFrom = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
+  private flyTo = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
+  private flying = false;
+  private selectedId: string | null = null;
+  private onSelectCb: ((id: string | null) => void) | null = null;
+  private onPointerMove: (e: PointerEvent) => void;
+  private onClick: (e: PointerEvent) => void;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -166,6 +178,30 @@ export class GlobeScene {
       this.pins.add(halo);
     }
 
+    // pointer raycasting — hover cursor + click to dive
+    this.onPointerMove = (e: PointerEvent) => {
+      const rect = this.renderer.domElement.getBoundingClientRect();
+      this.pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      this.pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      this.raycaster.setFromCamera(this.pointer, this.camera);
+      const hits = this.raycaster.intersectObjects(this.pins.children, false);
+      const overPin = hits.some((h) => h.object.userData.projectId);
+      this.renderer.domElement.style.cursor = overPin ? "pointer" : "grab";
+    };
+    this.onClick = (e: PointerEvent) => {
+      const rect = this.renderer.domElement.getBoundingClientRect();
+      this.pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      this.pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      this.raycaster.setFromCamera(this.pointer, this.camera);
+      const hits = this.raycaster.intersectObjects(this.pins.children, false);
+      const hit = hits.find((h) => h.object.userData.projectId);
+      if (hit) {
+        this.diveTo(hit.object.userData.projectId as string, hit.object.position.clone());
+      }
+    };
+    this.renderer.domElement.addEventListener("pointermove", this.onPointerMove);
+    this.renderer.domElement.addEventListener("click", this.onClick);
+
     // starfield
     const starCount = 1500;
     const positions = new Float32Array(starCount * 3);
@@ -206,8 +242,10 @@ export class GlobeScene {
 
   private animate() {
     this.frameId = requestAnimationFrame(this.animate);
-    // idle auto-rotate
-    this.globe.rotation.y += 0.0012;
+    // idle auto-rotate — paused while a project is selected
+    if (this.selectedId === null) {
+      this.globe.rotation.y += 0.0012;
+    }
     this.stars.rotation.y += 0.0002;
     // pulse the pin halos
     const pulse = 1 + Math.sin(performance.now() * 0.003) * 0.18;
@@ -216,8 +254,53 @@ export class GlobeScene {
         child.scale.setScalar(pulse);
       }
     });
+    if (this.flying) {
+      this.flyT = Math.min(1, this.flyT + 0.022);
+      const e = this.flyT < 0.5
+        ? 4 * this.flyT * this.flyT * this.flyT
+        : 1 - Math.pow(-2 * this.flyT + 2, 3) / 2; // easeInOutCubic
+      this.camera.position.lerpVectors(this.flyFrom.pos, this.flyTo.pos, e);
+      this.controls.target.lerpVectors(this.flyFrom.target, this.flyTo.target, e);
+      if (this.flyT >= 1) {
+        this.flying = false;
+        // re-enable controls only when back at orbit (selectedId null)
+        this.controls.enabled = this.selectedId === null;
+      }
+    }
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
+  }
+
+  setOnSelect(cb: (id: string | null) => void) {
+    this.onSelectCb = cb;
+  }
+
+  private startFly(toPos: THREE.Vector3, toTarget: THREE.Vector3) {
+    this.flyFrom.pos.copy(this.camera.position);
+    this.flyFrom.target.copy(this.controls.target);
+    this.flyTo.pos.copy(toPos);
+    this.flyTo.target.copy(toTarget);
+    this.flyT = 0;
+    this.flying = true;
+    this.controls.enabled = false;
+  }
+
+  diveTo(id: string, pinWorldPos: THREE.Vector3) {
+    // pinWorldPos is in globe-local space (pins are children of globe).
+    // convert to world, then place the camera a bit outside it looking at it.
+    const worldPos = pinWorldPos.clone();
+    this.globe.localToWorld(worldPos);
+    const dir = worldPos.clone().normalize();
+    const camPos = worldPos.clone().add(dir.multiplyScalar(55)); // 55 units above the pin
+    this.startFly(camPos, worldPos);
+    this.selectedId = id;
+    if (this.onSelectCb) this.onSelectCb(id);
+  }
+
+  returnToOrbit() {
+    this.startFly(this.homePos.clone(), this.homeTarget.clone());
+    this.selectedId = null;
+    if (this.onSelectCb) this.onSelectCb(null);
   }
 
   zoomIn() {
@@ -240,6 +323,8 @@ export class GlobeScene {
   dispose() {
     cancelAnimationFrame(this.frameId);
     window.removeEventListener("resize", this.onResize);
+    this.renderer.domElement.removeEventListener("pointermove", this.onPointerMove);
+    this.renderer.domElement.removeEventListener("click", this.onClick);
     this.controls.dispose();
     this.scene.traverse((obj) => {
       if (obj instanceof THREE.Mesh || obj instanceof THREE.Points) {
