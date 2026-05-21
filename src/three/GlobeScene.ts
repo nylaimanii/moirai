@@ -119,6 +119,44 @@ export class GlobeScene {
       this.globe.add(land);
     }
 
+    // atmosphere glow — fresnel shell, brightest at the rim
+    {
+      const atmoMat = new THREE.ShaderMaterial({
+        transparent: true,
+        side: THREE.BackSide,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        uniforms: {
+          uColor: { value: new THREE.Color(0x1b9fc4) },
+          uIntensity: { value: 1.15 },
+        },
+        vertexShader: `
+          varying vec3 vNormal;
+          void main() {
+            vNormal = normalize(normalMatrix * normal);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          varying vec3 vNormal;
+          uniform vec3 uColor;
+          uniform float uIntensity;
+          void main() {
+            // fresnel: glow strongest where normal faces away from camera (the rim)
+            float fres = pow(0.72 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.6);
+            gl_FragColor = vec4(uColor, clamp(fres, 0.0, 1.0) * uIntensity);
+          }
+        `,
+      });
+      const atmo = new THREE.Mesh(
+        new THREE.SphereGeometry(R * 1.18, 48, 48),
+        atmoMat
+      );
+      // atmosphere is added to the SCENE (not this.globe) so it doesn't
+      // spin — a glow halo shouldn't rotate. it stays centered on origin.
+      this.scene.add(atmo);
+    }
+
     // starfield
     const starCount = 1500;
     const positions = new Float32Array(starCount * 3);
