@@ -3,6 +3,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { PROJECTS } from "../data/projects";
 import { sampleLandPoints } from "./landPoints";
 import { CityScene } from "./CityScene";
+import { ImpactEffects } from "./ImpactEffects";
 
 function latLonToVec3(lat: number, lon: number, radius: number): THREE.Vector3 {
   const phi = (90 - lat) * (Math.PI / 180);
@@ -37,6 +38,8 @@ export class GlobeScene {
   private onSelectCb: ((id: string | null) => void) | null = null;
   private city: CityScene | null = null;
   private cityFade = 0; // 0..1
+  private effects: ImpactEffects | null = null;
+  private lastTime = performance.now();
   private onPointerMove: (e: PointerEvent) => void;
   private onClick: (e: PointerEvent) => void;
 
@@ -283,6 +286,14 @@ export class GlobeScene {
         this.group_removeCity();
       }
     }
+    // impact effects: update motion + match the city's fade
+    if (this.effects) {
+      const now = performance.now();
+      const dt = Math.min(0.05, (now - this.lastTime) / 1000);
+      this.lastTime = now;
+      this.effects.update(dt);
+      this.effects.setOpacity(this.cityFade);
+    }
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }
@@ -307,7 +318,7 @@ export class GlobeScene {
     const worldPos = pinWorldPos.clone();
     this.globe.localToWorld(worldPos);
     const dir = worldPos.clone().normalize();
-    const camPos = worldPos.clone().add(dir.multiplyScalar(92)); // above the pin, frames the whole city
+    const camPos = worldPos.clone().add(dir.multiplyScalar(108)); // above the pin, frames the whole city + effects headroom
     // build the city at the pin, oriented tangent to the globe surface
     if (this.city) { this.group_removeCity(); }
     this.city = new CityScene(id);
@@ -322,6 +333,12 @@ export class GlobeScene {
     this.city.group.scale.setScalar(0.0001); // start tiny, grow on fade-in
     this.scene.add(this.city.group);
     this.cityFade = 0;
+    // build impact effects for this project, parented to the city group
+    const proj = PROJECTS.find((p) => p.id === id);
+    if (proj && this.city) {
+      this.effects = new ImpactEffects(proj.impacts, 32); // 32 = city GRID half-extent
+      this.city.group.add(this.effects.group);
+    }
     this.startFly(camPos, worldPos);
     this.selectedId = id;
     if (this.onSelectCb) this.onSelectCb(id);
@@ -334,6 +351,10 @@ export class GlobeScene {
   }
 
   private group_removeCity() {
+    if (this.effects) {
+      this.effects.dispose();
+      this.effects = null;
+    }
     if (this.city) {
       this.scene.remove(this.city.group);
       this.city.dispose();
