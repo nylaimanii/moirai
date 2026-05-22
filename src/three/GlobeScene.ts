@@ -307,7 +307,7 @@ export class GlobeScene {
     const worldPos = pinWorldPos.clone();
     this.globe.localToWorld(worldPos);
     const dir = worldPos.clone().normalize();
-    const camPos = worldPos.clone().add(dir.multiplyScalar(55)); // 55 units above the pin
+    const camPos = worldPos.clone().add(dir.multiplyScalar(92)); // above the pin, frames the whole city
     // build the city at the pin, oriented tangent to the globe surface
     if (this.city) { this.group_removeCity(); }
     this.city = new CityScene(id);

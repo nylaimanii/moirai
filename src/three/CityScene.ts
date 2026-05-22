@@ -29,8 +29,8 @@ export class CityScene {
     this.group = new THREE.Group();
     const rand = mulberry32(hashId(projectId));
 
-    const GRID = 70;          // half-extent of the district (units)
-    const CELL = 10;          // block size
+    const GRID = 32;          // half-extent of the district (units)
+    const CELL = 7;           // block size
     const cyan = 0x2fd0d8;
     const gold = 0xf4c66a;
 
@@ -52,7 +52,7 @@ export class CityScene {
     for (let gx = -GRID + CELL; gx < GRID; gx += CELL) {
       for (let gz = -GRID + CELL; gz < GRID; gz += CELL) {
         if (rand() < 0.45) continue; // some empty lots
-        const h = 6 + rand() * 46;
+        const h = 4 + rand() * 26;
         const w = CELL * (0.4 + rand() * 0.35);
         const d = CELL * (0.4 + rand() * 0.35);
         const box = new THREE.BoxGeometry(w, h, d);
@@ -71,7 +71,7 @@ export class CityScene {
 
     // the project itself — a brighter gold tower at center with a halo ring
     {
-      const h = 70;
+      const h = 38;
       const box = new THREE.BoxGeometry(8, h, 8);
       this.geometries.push(box);
       const edges = new THREE.EdgesGeometry(box);
