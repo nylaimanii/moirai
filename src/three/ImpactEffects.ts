@@ -1,6 +1,25 @@
 import * as THREE from "three";
 import type { ImpactScores } from "../data/projects";
 
+// soft radial-gradient sprite so particles read as haze, not squares
+let _softTex: THREE.Texture | null = null;
+function softCircleTexture(): THREE.Texture {
+  if (_softTex) return _softTex;
+  const size = 64;
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const ctx = c.getContext("2d")!;
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  g.addColorStop(0, "rgba(255,255,255,1)");
+  g.addColorStop(0.4, "rgba(255,255,255,0.5)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  const tex = new THREE.CanvasTexture(c);
+  _softTex = tex;
+  return tex;
+}
+
 export class ImpactEffects {
   group: THREE.Group;
   private materials: THREE.Material[] = [];
@@ -26,7 +45,7 @@ export class ImpactEffects {
   // ---- ECONOMY: gold energy columns rising from the ground, count + height by score ----
   private buildEconomy() {
     const score = this.scores.economy / 100; // 0..1
-    const count = Math.round(4 + score * 16); // 4..20 columns
+    const count = Math.round(5 + score * 13); // 5..18 columns
     const mat = new THREE.MeshBasicMaterial({
       color: 0xf4c66a,
       transparent: true,
@@ -36,8 +55,8 @@ export class ImpactEffects {
     });
     this.materials.push(mat);
     for (let i = 0; i < count; i++) {
-      const h = 14 + score * 46 + Math.random() * 10;
-      const geo = new THREE.CylinderGeometry(0.5, 0.5, h, 6, 1, true);
+      const h = 24 + score * 60 + Math.random() * 12;
+      const geo = new THREE.CylinderGeometry(1.1, 1.6, h, 8, 1, false);
       this.geometries.push(geo);
       const col = new THREE.Mesh(geo, mat);
       const a = Math.random() * Math.PI * 2;
@@ -66,7 +85,8 @@ export class ImpactEffects {
     this.geometries.push(geo);
     const mat = new THREE.PointsMaterial({
       color: 0x9d7bff,
-      size: 2.2,
+      size: 4.5,
+      map: softCircleTexture(),
       transparent: true,
       opacity: 0,
       blending: THREE.AdditiveBlending,
@@ -119,12 +139,13 @@ export class ImpactEffects {
     for (const m of this.materials) {
       const mm = m as THREE.Material & { opacity: number };
       // economy columns brighter, pollution softer
-      mm.opacity = o * ((m as THREE.PointsMaterial).isPointsMaterial ? 0.55 : 0.7);
+      mm.opacity = o * ((m as THREE.PointsMaterial).isPointsMaterial ? 0.6 : 0.9);
     }
   }
 
   dispose() {
     for (const g of this.geometries) g.dispose();
     for (const m of this.materials) m.dispose();
+    if (_softTex) { _softTex.dispose(); _softTex = null; }
   }
 }
