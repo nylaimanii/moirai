@@ -63,7 +63,7 @@ export class ImpactEffects {
   // ---- ECONOMY: gold energy columns rising from the ground, count + height by score ----
   private buildEconomy() {
     const score = this.scores.economy / 100; // 0..1
-    const count = Math.round(5 + score * 13); // 5..18 columns
+    const count = Math.round(3 + score * 17); // 3..20 columns
     const mat = new THREE.MeshBasicMaterial({
       color: 0xf4c66a,
       transparent: true,
@@ -74,11 +74,11 @@ export class ImpactEffects {
     this.materials.push(mat);
     for (let i = 0; i < count; i++) {
       const h = 24 + score * 60 + Math.random() * 12;
-      const geo = new THREE.CylinderGeometry(1.1, 1.6, h, 8, 1, false);
+      const geo = new THREE.CylinderGeometry(0.7, 1.0, h, 8, 1, false);
       this.geometries.push(geo);
       const col = new THREE.Mesh(geo, mat);
       const a = Math.random() * Math.PI * 2;
-      const r = Math.random() * this.grid * 0.8;
+      const r = this.grid * 0.3 + Math.random() * this.grid * 0.55;
       col.position.set(Math.cos(a) * r, h / 2, Math.sin(a) * r);
       col.userData.baseY = h / 2;
       col.userData.h = h;
@@ -141,7 +141,7 @@ export class ImpactEffects {
     this.geometries.push(geo);
     const mat = new THREE.PointsMaterial({
       color: 0xe8702a,
-      size: 3,
+      size: 4,
       map: softCircleTexture(),
       transparent: true,
       opacity: 0,
@@ -192,7 +192,7 @@ export class ImpactEffects {
       });
       mat.userData.isRing = true;
       this.materials.push(mat);
-      const geo = new THREE.RingGeometry(1, 1.6, 48);
+      const geo = new THREE.RingGeometry(1, 2.8, 48);
       this.geometries.push(geo);
       const ring = new THREE.Mesh(geo, mat);
       ring.rotation.x = -Math.PI / 2;
@@ -215,7 +215,7 @@ export class ImpactEffects {
       const a = Math.random() * Math.PI * 2;
       const r = Math.random() * this.grid;
       positions[i * 3] = Math.cos(a) * r;
-      positions[i * 3 + 1] = 0.5;
+      positions[i * 3 + 1] = 2.5;
       positions[i * 3 + 2] = Math.sin(a) * r;
       // higher score = more dots "lost" (flicker toward dead)
       this.habitatBase[i] = Math.random() > score ? 1 : 0;
@@ -224,8 +224,8 @@ export class ImpactEffects {
     geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     this.geometries.push(geo);
     const mat = new THREE.PointsMaterial({
-      color: 0x43e8a0,
-      size: 2.6,
+      color: 0xc8ff5e,
+      size: 3.4,
       map: softCircleTexture(),
       transparent: true,
       opacity: 0,
@@ -252,7 +252,7 @@ export class ImpactEffects {
       });
       mat.userData.isRing = true;
       this.materials.push(mat);
-      const geo = new THREE.RingGeometry(1, 1.3, 48);
+      const geo = new THREE.RingGeometry(1, 1.15, 48);
       this.geometries.push(geo);
       const ring = new THREE.Mesh(geo, mat);
       ring.rotation.x = -Math.PI / 2;
@@ -324,7 +324,7 @@ export class ImpactEffects {
       const s = 1 + grow * this.grid * 1.1;
       ring.scale.set(s, s, s);
       ring.userData.localFade = 1 - grow;
-      (ring.material as THREE.MeshBasicMaterial).opacity = (1 - grow) * this._fadeMul * 0.5;
+      (ring.material as THREE.MeshBasicMaterial).opacity = (1 - grow) * this._fadeMul * 0.4;
     }
   }
 
@@ -335,12 +335,16 @@ export class ImpactEffects {
       if (m.userData.isRing) continue;
       const mm = m as THREE.Material & { opacity: number };
       // economy columns brighter, particle effects softer
-      mm.opacity = o * ((m as THREE.PointsMaterial).isPointsMaterial ? 0.6 : 0.9);
+      mm.opacity = o * ((m as THREE.PointsMaterial).isPointsMaterial ? 0.6 : 0.55);
     }
     // habitat: override the points opacity with the flicker modulation
     if (this.habitat) {
       (this.habitat.material as THREE.PointsMaterial).opacity =
-        o * 0.7 * (this.habitat.userData.flicker ?? 1);
+        o * 0.85 * (this.habitat.userData.flicker ?? 1);
+    }
+    // traffic: punch through the gold pillars
+    if (this.traffic) {
+      (this.traffic.material as THREE.PointsMaterial).opacity = o * 0.85;
     }
   }
 
