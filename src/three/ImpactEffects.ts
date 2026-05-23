@@ -33,6 +33,20 @@ export class ImpactEffects {
   private pollution: THREE.Points | null = null;
   private pollutionVel: Float32Array | null = null;
   private pollutionCount = 0;
+  // traffic streaks
+  private traffic: THREE.Points | null = null;
+  private trafficVel: Float32Array | null = null;
+  private trafficCount = 0;
+  // health ripple rings
+  private healthRings: THREE.Mesh[] = [];
+  // habitat (tree dots that flicker out)
+  private habitat: THREE.Points | null = null;
+  private habitatBase: Float32Array | null = null;
+  private habitatCount = 0;
+  // noise rings
+  private noiseRings: THREE.Mesh[] = [];
+  // global fade multiplier — set by setOpacity, read by update() for per-ring fades
+  private _fadeMul = 0;
 
   constructor(scores: ImpactScores, gridHalfExtent: number) {
     this.group = new THREE.Group();
@@ -40,6 +54,10 @@ export class ImpactEffects {
     this.grid = gridHalfExtent;
     this.buildEconomy();
     this.buildPollution();
+    this.buildTraffic();
+    this.buildHealth();
+    this.buildHabitat();
+    this.buildNoise();
   }
 
   // ---- ECONOMY: gold energy columns rising from the ground, count + height by score ----
@@ -110,6 +128,142 @@ export class ImpactEffects {
     }
   }
 
+  // ---- TRAFFIC: orange streaks flowing along the ground grid, speed/count by score ----
+  private buildTraffic() {
+    const score = this.scores.traffic / 100;
+    const count = Math.round(40 + score * 200);
+    this.trafficCount = count;
+    const positions = new Float32Array(count * 3);
+    this.trafficVel = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) this.resetTrafficParticle(positions, i);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    this.geometries.push(geo);
+    const mat = new THREE.PointsMaterial({
+      color: 0xe8702a,
+      size: 3,
+      map: softCircleTexture(),
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    this.materials.push(mat);
+    this.traffic = new THREE.Points(geo, mat);
+    this.group.add(this.traffic);
+  }
+
+  private resetTrafficParticle(positions: Float32Array, i: number) {
+    // streaks travel along axis-aligned "roads" near ground level
+    const onX = Math.random() < 0.5;
+    const lane = (Math.floor(Math.random() * 7) - 3) * 8; // grid lanes
+    const start = -this.grid + Math.random() * 4;
+    if (onX) {
+      positions[i * 3] = start;
+      positions[i * 3 + 1] = 1.5;
+      positions[i * 3 + 2] = lane;
+    } else {
+      positions[i * 3] = lane;
+      positions[i * 3 + 1] = 1.5;
+      positions[i * 3 + 2] = start;
+    }
+    if (this.trafficVel) {
+      const score = this.scores.traffic / 100;
+      // higher score = SLOWER (congestion/jams) — counterintuitive but that's the point
+      const speed = (0.9 - score * 0.5) * (0.6 + Math.random() * 0.6);
+      this.trafficVel[i * 3] = onX ? speed : 0;
+      this.trafficVel[i * 3 + 1] = 0;
+      this.trafficVel[i * 3 + 2] = onX ? 0 : speed;
+    }
+  }
+
+  // ---- HEALTH: rose ripple rings expanding from center, rate/brightness by score ----
+  private buildHealth() {
+    const score = this.scores.health / 100;
+    const ringCount = Math.round(2 + score * 4); // 2..6 rings
+    for (let i = 0; i < ringCount; i++) {
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xe03a5f,
+        transparent: true,
+        opacity: 0,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      mat.userData.isRing = true;
+      this.materials.push(mat);
+      const geo = new THREE.RingGeometry(1, 1.6, 48);
+      this.geometries.push(geo);
+      const ring = new THREE.Mesh(geo, mat);
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.y = 1;
+      ring.userData.offset = (i / ringCount) * Math.PI * 2;
+      ring.userData.speed = 0.4 + score * 0.6;
+      this.healthRings.push(ring);
+      this.group.add(ring);
+    }
+  }
+
+  // ---- HABITAT: green ground dots that dim/flicker, loss fraction by score ----
+  private buildHabitat() {
+    const score = this.scores.habitat / 100; // higher = more loss
+    const count = 180;
+    this.habitatCount = count;
+    const positions = new Float32Array(count * 3);
+    this.habitatBase = new Float32Array(count); // per-dot "alive" base 0/1
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = Math.random() * this.grid;
+      positions[i * 3] = Math.cos(a) * r;
+      positions[i * 3 + 1] = 0.5;
+      positions[i * 3 + 2] = Math.sin(a) * r;
+      // higher score = more dots "lost" (flicker toward dead)
+      this.habitatBase[i] = Math.random() > score ? 1 : 0;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    this.geometries.push(geo);
+    const mat = new THREE.PointsMaterial({
+      color: 0x43e8a0,
+      size: 2.6,
+      map: softCircleTexture(),
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    this.materials.push(mat);
+    this.habitat = new THREE.Points(geo, mat);
+    this.group.add(this.habitat);
+  }
+
+  // ---- NOISE: cyan concentric sound-wave rings, amplitude by score ----
+  private buildNoise() {
+    const score = this.scores.noise / 100;
+    const ringCount = Math.round(2 + score * 3); // 2..5
+    for (let i = 0; i < ringCount; i++) {
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0x4dd0ff,
+        transparent: true,
+        opacity: 0,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      mat.userData.isRing = true;
+      this.materials.push(mat);
+      const geo = new THREE.RingGeometry(1, 1.3, 48);
+      this.geometries.push(geo);
+      const ring = new THREE.Mesh(geo, mat);
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.y = 0.6;
+      ring.userData.offset = (i / ringCount) * Math.PI * 2;
+      ring.userData.speed = 0.5 + score * 0.5;
+      this.noiseRings.push(ring);
+      this.group.add(ring);
+    }
+  }
+
   update(dt: number) {
     const t = performance.now() * 0.001;
     // economy: gentle vertical pulse
@@ -133,13 +287,60 @@ export class ImpactEffects {
       }
       pos.needsUpdate = true;
     }
+    // traffic: advect along roads, recycle off-grid
+    if (this.traffic && this.trafficVel) {
+      const pos = this.traffic.geometry.getAttribute("position") as THREE.BufferAttribute;
+      const arr = pos.array as Float32Array;
+      for (let i = 0; i < this.trafficCount; i++) {
+        arr[i * 3] += this.trafficVel[i * 3] * dt * 60;
+        arr[i * 3 + 2] += this.trafficVel[i * 3 + 2] * dt * 60;
+        if (Math.abs(arr[i * 3]) > this.grid || Math.abs(arr[i * 3 + 2]) > this.grid) {
+          this.resetTrafficParticle(arr, i);
+        }
+      }
+      pos.needsUpdate = true;
+    }
+    // health rings: expand outward + fade as they grow, loop. per-ring opacity owned here.
+    for (const ring of this.healthRings) {
+      const off = ring.userData.offset as number;
+      const spd = ring.userData.speed as number;
+      const phase = (t * spd + off) % (Math.PI); // 0..PI loop
+      const grow = phase / Math.PI;              // 0..1
+      const s = 1 + grow * this.grid * 0.9;
+      ring.scale.set(s, s, s);
+      ring.userData.localFade = 1 - grow;
+      (ring.material as THREE.MeshBasicMaterial).opacity = (1 - grow) * this._fadeMul * 0.5;
+    }
+    // habitat: jitter a per-frame flicker value (applied to material in setOpacity)
+    if (this.habitat && this.habitatBase && this.habitatCount > 0) {
+      this.habitat.userData.flicker = 0.5 + Math.sin(t * 8) * 0.5;
+    }
+    // noise rings: expand + loop, tighter than health
+    for (const ring of this.noiseRings) {
+      const off = ring.userData.offset as number;
+      const spd = ring.userData.speed as number;
+      const phase = (t * spd + off) % (Math.PI);
+      const grow = phase / Math.PI;
+      const s = 1 + grow * this.grid * 1.1;
+      ring.scale.set(s, s, s);
+      ring.userData.localFade = 1 - grow;
+      (ring.material as THREE.MeshBasicMaterial).opacity = (1 - grow) * this._fadeMul * 0.5;
+    }
   }
 
   setOpacity(o: number) {
+    this._fadeMul = o;
     for (const m of this.materials) {
+      // rings own their own opacity (set per-frame in update via _fadeMul)
+      if (m.userData.isRing) continue;
       const mm = m as THREE.Material & { opacity: number };
-      // economy columns brighter, pollution softer
+      // economy columns brighter, particle effects softer
       mm.opacity = o * ((m as THREE.PointsMaterial).isPointsMaterial ? 0.6 : 0.9);
+    }
+    // habitat: override the points opacity with the flicker modulation
+    if (this.habitat) {
+      (this.habitat.material as THREE.PointsMaterial).opacity =
+        o * 0.7 * (this.habitat.userData.flicker ?? 1);
     }
   }
 
