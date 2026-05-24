@@ -24,7 +24,7 @@ export function ResultCard() {
 
   const { best, carbonSavedPct, costSavedPct, carbonSavedKg, costSavedUsd } = result;
   return (
-    <div className="rounded-2xl border border-neon-400/25 bg-space-800/60 p-7 backdrop-blur" style={{ animation: "flareIn .6s ease-out" }}>
+    <div key={`${best.regionId}-${best.startHour}-${result.runNow.totalCostUsd.toFixed(2)}`} className="rounded-2xl border border-neon-400/25 bg-space-800/60 p-7 backdrop-blur" style={{ animation: "flareIn .6s ease-out" }}>
       <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-neon-400">
         optimal window
       </div>

@@ -1,4 +1,5 @@
 import { WorkloadPanel } from "./components/WorkloadPanel";
+import { WeightSlider } from "./components/WeightSlider";
 import { ResultCard } from "./components/ResultCard";
 
 function App() {
@@ -12,7 +13,10 @@ function App() {
       </header>
 
       <main className="mx-auto mt-8 grid max-w-4xl grid-cols-1 gap-6 px-8 pb-16 md:grid-cols-2">
-        <WorkloadPanel />
+        <div className="flex flex-col gap-6">
+          <WorkloadPanel />
+          <WeightSlider />
+        </div>
         <ResultCard />
       </main>
     </div>
