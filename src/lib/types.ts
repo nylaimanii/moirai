@@ -8,6 +8,8 @@ export interface GridHour {
 export interface Region {
   id: string;              // e.g. "caiso"
   name: string;            // e.g. "California (CAISO)"
+  lng: number;             // approximate centroid longitude (for the map)
+  lat: number;             // approximate centroid latitude
   hours: GridHour[];       // forecast horizon, hour 0..N
 }
 

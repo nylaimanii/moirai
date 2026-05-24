@@ -10,6 +10,7 @@ function seeded(seed: number) {
 
 interface RegionSpec {
   id: string; name: string;
+  lng: number; lat: number;
   baseCarbon: number; // gCO2/kWh baseline
   basePrice: number;  // $/kWh baseline
   solarBias: number;  // how much midday solar cleans/cheapens it (0..1)
@@ -17,10 +18,10 @@ interface RegionSpec {
 }
 
 const SPECS: RegionSpec[] = [
-  { id: "caiso", name: "California (CAISO)", baseCarbon: 250, basePrice: 0.09, solarBias: 0.9, seed: 1 },
-  { id: "ercot", name: "Texas (ERCOT)", baseCarbon: 400, basePrice: 0.06, solarBias: 0.5, seed: 2 },
-  { id: "nyiso", name: "New York (NYISO)", baseCarbon: 300, basePrice: 0.11, solarBias: 0.3, seed: 3 },
-  { id: "ieso", name: "Ontario (IESO)", baseCarbon: 120, basePrice: 0.08, solarBias: 0.2, seed: 4 },
+  { id: "caiso", name: "California (CAISO)", lng: -119.4, lat: 36.7, baseCarbon: 250, basePrice: 0.09, solarBias: 0.9, seed: 1 },
+  { id: "ercot", name: "Texas (ERCOT)", lng: -97.5, lat: 31.0, baseCarbon: 400, basePrice: 0.06, solarBias: 0.5, seed: 2 },
+  { id: "nyiso", name: "New York (NYISO)", lng: -75.0, lat: 42.9, baseCarbon: 300, basePrice: 0.11, solarBias: 0.3, seed: 3 },
+  { id: "ieso", name: "Ontario (IESO)", lng: -79.4, lat: 43.7, baseCarbon: 120, basePrice: 0.08, solarBias: 0.2, seed: 4 },
 ];
 
 // generate `horizon` hours of forecast for all regions, starting at currentHourOfDay.
@@ -39,6 +40,6 @@ export function generateMockRegions(horizon = 48, currentHourOfDay = new Date().
       const price = Math.max(0.02, spec.basePrice * (1 - solar * 0.5 + peak * 0.7 + noise));
       hours.push({ hour: h, carbon: Math.round(carbon), price: Math.round(price * 1000) / 1000 });
     }
-    return { id: spec.id, name: spec.name, hours };
+    return { id: spec.id, name: spec.name, lng: spec.lng, lat: spec.lat, hours };
   });
 }

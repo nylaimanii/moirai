@@ -1,6 +1,7 @@
 import { WorkloadPanel } from "./components/WorkloadPanel";
 import { WeightSlider } from "./components/WeightSlider";
 import { ResultCard } from "./components/ResultCard";
+import { MapPanel } from "./components/MapPanel";
 
 function App() {
   return (
@@ -19,6 +20,10 @@ function App() {
         </div>
         <ResultCard />
       </main>
+
+      <div className="mx-auto max-w-4xl px-8 pb-16">
+        <MapPanel />
+      </div>
     </div>
   );
 }
