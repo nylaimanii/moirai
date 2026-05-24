@@ -1,19 +1,15 @@
-import { GlobeCanvas } from "./components/GlobeCanvas";
-
 function App() {
   return (
-    <div className="relative h-full w-full overflow-hidden bg-space-900">
-      <GlobeCanvas />
-
-      {/* hud overlay — wordmark */}
-      <div className="pointer-events-none absolute left-8 top-7 z-10">
-        <h1 className="text-2xl font-semibold tracking-tight text-neon-400">
-          moirai
-        </h1>
-        <p className="mt-0.5 font-mono text-[10px] uppercase tracking-widest text-cyan-400/80">
-          the fates of what we build
-        </p>
-      </div>
+    <div style={{ minHeight: "100vh", background: "#040810", color: "#eaf6ff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, sans-serif" }}>
+      <h1 style={{ fontSize: 40, fontWeight: 600, letterSpacing: "-0.02em", color: "#5fe3c0" }}>
+        moirai
+      </h1>
+      <p style={{ fontSize: 14, color: "#7fa8bd", marginTop: 8, letterSpacing: "0.04em" }}>
+        run compute when it's clean and cheap
+      </p>
+      <p style={{ fontSize: 11, color: "#4a7a93", marginTop: 24, fontFamily: "monospace" }}>
+        rebuild in progress
+      </p>
     </div>
   );
 }

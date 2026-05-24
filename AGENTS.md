@@ -1,29 +1,28 @@
 <!-- BEGIN:stack-rules -->
-this project is VITE + react 19 + typescript, NOT next.js. there is no app router, no server components, no /pages or /app dir. it is a single-page client-side 3d app. the entry is index.html -> src/main.tsx -> src/App.tsx. do NOT add next.js, do NOT add SSR. three.js runs client-side only.
+this project is VITE + react 19 + typescript, NOT next.js. there is no app router, no server components, no /pages or /app dir. it is a single-page client-side app. the entry is index.html -> src/main.tsx -> src/App.tsx. do NOT add next.js, do NOT add SSR.
 <!-- END:stack-rules -->
 
 # AGENTS.md
 
 ## about moirai
 
-moirai is an interactive 3d web app. a neon-holographic globe of major construction projects worldwide. the core flow:
+moirai is a neon dashboard + simulator for scheduling heavy compute into the cleanest and cheapest grid windows. core pieces:
 
-1. **globe** — rotating wireframe earth, glowing landmasses, project pins. orbit + zoom.
-2. **the dive** — click a pin, camera flies from orbit down to street level, globe dissolves into a city.
-3. **city + ripples** — procedural neon wireframe district. the project's impact animates: pollution drift, traffic pulse, health ripples, economy glow, habitat flicker. floating stat readouts.
+1. **dashboard** — when/where on the grid it's clean (low gCO2/kWh) AND cheap (low $/kWh) right now and in the upcoming hours.
+2. **scheduler** — drop a workload (training run, batch job, render) and align it to the best window across regions.
+3. **AI recommendation layer** — explains the tradeoff, picks a window, narrates why.
 
 ## stack
 
-vite, react 19, typescript (strict), three.js, zustand, tailwind, framer motion. deploy to vercel.
+vite, react 19, typescript (strict), tailwind, zustand. framer motion for transitions. deploy to vercel.
 
 ## conventions
 
 - typescript strict, prefer explicit types over `any`
 - functional components + hooks
-- three.js scene logic lives in src/three/ (plain ts modules), react owns ui/state only
-- aesthetic: y2k neon holographic — deep space bg, glowing wireframes, cyan/green/violet palette
-- color logic for impacts: cool/green = benefit, hot = burden, gold = economic value
+- aesthetic: neon holographic — deep space bg, glowing accents, cyan/green/violet palette
+- color logic: cool/green = clean & cheap, hot = dirty or expensive, gold = value/savings
 
 ## current build phase
 
-scaffolding. do not add features outside the current step without asking.
+post-pivot cleanup. minimal scaffold + neon tokens. do not add features outside the current step without asking.
