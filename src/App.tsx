@@ -1,15 +1,20 @@
+import { WorkloadPanel } from "./components/WorkloadPanel";
+import { ResultCard } from "./components/ResultCard";
+
 function App() {
   return (
-    <div style={{ minHeight: "100vh", background: "#040810", color: "#eaf6ff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, sans-serif" }}>
-      <h1 style={{ fontSize: 40, fontWeight: 600, letterSpacing: "-0.02em", color: "#5fe3c0" }}>
-        moirai
-      </h1>
-      <p style={{ fontSize: 14, color: "#7fa8bd", marginTop: 8, letterSpacing: "0.04em" }}>
-        run compute when it's clean and cheap
-      </p>
-      <p style={{ fontSize: 11, color: "#4a7a93", marginTop: 24, fontFamily: "monospace" }}>
-        rebuild in progress
-      </p>
+    <div className="min-h-screen bg-space-900 text-haze-100">
+      <header className="px-8 pt-7">
+        <h1 className="text-xl font-semibold tracking-tight text-neon-400">moirai</h1>
+        <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.28em] text-cyan-400/70">
+          run compute when it's clean and cheap
+        </p>
+      </header>
+
+      <main className="mx-auto mt-8 grid max-w-4xl grid-cols-1 gap-6 px-8 pb-16 md:grid-cols-2">
+        <WorkloadPanel />
+        <ResultCard />
+      </main>
     </div>
   );
 }
